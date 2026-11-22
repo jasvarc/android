@@ -1,18 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Šípky</string>
-    <string name="hud_score">Skóre: %1$d</string>
-    <string name="hud_round">Kolo %1$d · šípka %2$d/%3$d</string>
-    <string name="hud_last_throw">%1$s · %2$d b.</string>
-    <string name="hud_hint">Ťahaj prstom, pusti = hod</string>
-    <string name="new_game">Nová hra</string>
+
+    <!-- Menu -->
+    <string name="menu_difficulty">Náročnosť</string>
     <string name="difficulty_easy">Ľahká</string>
     <string name="difficulty_medium">Stredná</string>
     <string name="difficulty_hard">Ťažká</string>
+    <string name="mode_training">Tréning</string>
+    <string name="mode_training_desc">Voľné hádzanie bez cieľa, kolá po 3 šípkach. Rekord je najlepšie kolo.</string>
+    <string name="mode_x01">X01</string>
+    <string name="mode_x01_desc">Odpočítavaj presne na nulu, po 3 šípkach. Prestrelenie vráti skóre na začiatok kola. Rekord je najmenej šípok.</string>
+    <string name="mode_roundabout">Okolo terča</string>
+    <string name="mode_roundabout_desc">Postupne traf všetky čísla od 1 po 20 a nakoniec bull. Rekord je najmenej šípok.</string>
+    <string name="variant_any">Čokoľvek</string>
+    <string name="variant_any_desc">1 až 20 v ľubovoľnom poli, potom 25.</string>
+    <string name="variant_multiple">Násobky</string>
+    <string name="variant_multiple_desc">Single 1 až 20, potom double alebo triple 1 až 20, potom 25 a 50.</string>
+    <string name="variant_double_triple">Double-Triple</string>
+    <string name="variant_double_triple_desc">Single, potom double, potom triple 1 až 20, nakoniec 25 a 50.</string>
+    <string name="play">Hrať</string>
+    <string name="no_record">—</string>
+    <string name="points_short">%1$d b.</string>
+
+    <!-- Hra -->
+    <string name="hud_score">Skóre: %1$d</string>
+    <string name="hud_remaining">Zostáva: %1$d</string>
+    <string name="hud_target">Cieľ: %1$s</string>
+    <string name="hud_progress">Cieľ %1$d z %2$d</string>
+    <string name="hud_round">Kolo %1$d · šípka %2$d/%3$d</string>
+    <string name="hud_last_throw">%1$s · %2$d b.</string>
+    <string name="hud_hint">Ťahaj prstom, pusti = hod</string>
+    <string name="hud_record">Rekord: %1$s</string>
+    <string name="restart">Znova</string>
+    <string name="exit">Ukončiť</string>
+    <string name="summary_bust">Prestrelené! Zostáva %1$d</string>
+    <string name="summary_x01">Kolo %1$d: %2$d b. · zostáva %3$d</string>
+    <string name="new_record">Nový rekord!</string>
+    <string name="game_over">Hotovo!</string>
+    <string name="play_again">Hrať znova</string>
+    <string name="menu">Menu</string>
+
     <plurals name="round_summary">
         <item quantity="one">Kolo %1$d: %2$d bod</item>
         <item quantity="few">Kolo %1$d: %2$d body</item>
         <item quantity="many">Kolo %1$d: %2$d bodu</item>
         <item quantity="other">Kolo %1$d: %2$d bodov</item>
+    </plurals>
+    <plurals name="summary_hits">
+        <item quantity="one">Kolo %1$d: %2$d zásah</item>
+        <item quantity="few">Kolo %1$d: %2$d zásahy</item>
+        <item quantity="many">Kolo %1$d: %2$d zásahu</item>
+        <item quantity="other">Kolo %1$d: %2$d zásahov</item>
+    </plurals>
+    <plurals name="darts_count">
+        <item quantity="one">%1$d šípka</item>
+        <item quantity="few">%1$d šípky</item>
+        <item quantity="many">%1$d šípky</item>
+        <item quantity="other">%1$d šípok</item>
+    </plurals>
+    <plurals name="game_over_darts">
+        <item quantity="one">Za %1$d šípku</item>
+        <item quantity="few">Za %1$d šípky</item>
+        <item quantity="many">Za %1$d šípky</item>
+        <item quantity="other">Za %1$d šípok</item>
     </plurals>
 </resources>

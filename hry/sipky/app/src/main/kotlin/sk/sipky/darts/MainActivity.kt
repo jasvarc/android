@@ -2,6 +2,7 @@ package sk.sipky.darts
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
@@ -10,6 +11,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import sk.sipky.darts.ui.GameScreen
 import sk.sipky.darts.ui.GameViewModel
+import sk.sipky.darts.ui.MenuScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -19,7 +21,18 @@ class MainActivity : ComponentActivity() {
         hideSystemBars()
         setContent {
             val viewModel: GameViewModel = viewModel()
-            GameScreen(viewModel.game)
+            val game = viewModel.activeGame
+            if (game == null) {
+                MenuScreen(
+                    difficulty = viewModel.difficulty,
+                    onDifficulty = viewModel::selectDifficulty,
+                    recordFor = viewModel::recordFor,
+                    onStart = viewModel::start,
+                )
+            } else {
+                BackHandler(onBack = viewModel::exitToMenu)
+                GameScreen(game, onExit = viewModel::exitToMenu)
+            }
         }
     }
 

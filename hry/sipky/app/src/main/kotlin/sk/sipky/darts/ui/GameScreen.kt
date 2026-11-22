@@ -2,24 +2,22 @@ package sk.sipky.darts.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.mandatorySystemGestures
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,40 +25,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import sk.sipky.darts.R
-import sk.sipky.darts.game.Difficulty
 import sk.sipky.darts.game.GameConfig
 import sk.sipky.darts.game.GameState
 import sk.sipky.darts.game.Phase
-
-private val BackgroundBrush = Brush.verticalGradient(listOf(Color(0xFF232A36), Color(0xFF12151B)))
-
-private val TextShadow = Shadow(Color.Black, Offset(0f, 2f), 6f)
-private val ScoreStyle = TextStyle(color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold, shadow = TextShadow)
-private val InfoStyle = TextStyle(color = Color(0xFFE6E9EF), fontSize = 17.sp, fontWeight = FontWeight.Medium, shadow = TextShadow)
-private val ButtonStyle = TextStyle(color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-private val ChipStyle = TextStyle(color = Color(0xFFCDD3DC), fontSize = 14.sp, fontWeight = FontWeight.Medium)
-private val ChipSelectedStyle = TextStyle(color = Color(0xFF12151B), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-private val SelectedChip = Color(0xFFF2F2F2)
-private val SummaryStyle =TextStyle(color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+import sk.sipky.darts.game.RoundaboutRules
+import sk.sipky.darts.game.TrainingRules
+import sk.sipky.darts.game.X01Rules
 
 @Composable
-fun GameScreen(game: GameState) {
+fun GameScreen(game: GameState, onExit: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     val renderer = remember { SceneRenderer() }
 
@@ -86,7 +67,7 @@ fun GameScreen(game: GameState) {
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.mandatorySystemGestures)),
         ) {
-            Hud(game)
+            Hud(game, onExit)
             Box(
                 Modifier
                     .weight(1f)
@@ -97,8 +78,13 @@ fun GameScreen(game: GameState) {
                     renderer.updateLayout(size, this)
                     renderer.draw(this, game)
                 }
-                if (game.phase == Phase.ROUND_SUMMARY) {
-                    RoundSummary(game.round, game.roundPoints, Modifier.align(Alignment.Center))
+                val overlayModifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 16.dp, end = 16.dp, bottom = 48.dp)
+                when (game.phase) {
+                    Phase.ROUND_SUMMARY -> RoundSummary(game, overlayModifier)
+                    Phase.GAME_OVER -> GameOver(game, onExit, overlayModifier)
+                    else -> Unit
                 }
             }
         }
@@ -106,10 +92,7 @@ fun GameScreen(game: GameState) {
 }
 
 /** Relatívne ťahanie prstom posúva zameriavač, zdvihnutie prsta hodí šípku. */
-private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.aimAndThrow(
-    game: GameState,
-    renderer: SceneRenderer,
-) {
+private suspend fun PointerInputScope.aimAndThrow(game: GameState, renderer: SceneRenderer) {
     awaitEachGesture {
         val down = awaitFirstDown()
         if (!game.onPointerDown()) return@awaitEachGesture
@@ -136,15 +119,26 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.aimAndTh
 }
 
 @Composable
-private fun Hud(game: GameState) {
+private fun Hud(game: GameState, onExit: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
     ) {
         Column(Modifier.weight(1f)) {
-            BasicText(stringResource(R.string.hud_score, game.score), style = ScoreStyle)
+            when (val rules = game.rules) {
+                is TrainingRules -> BasicText(stringResource(R.string.hud_score, rules.total), style = ScoreStyle)
+                is X01Rules -> BasicText(stringResource(R.string.hud_remaining, rules.remaining), style = ScoreStyle)
+                is RoundaboutRules -> {
+                    val label = rules.currentTarget?.label ?: stringResource(R.string.no_record)
+                    BasicText(stringResource(R.string.hud_target, label), style = ScoreStyle)
+                    BasicText(
+                        stringResource(R.string.hud_progress, minOf(rules.targetIndex + 1, rules.targets.size), rules.targets.size),
+                        style = InfoStyle,
+                    )
+                }
+            }
             BasicText(
                 stringResource(R.string.hud_round, game.round, game.dartNumber, GameConfig.dartsPerRound),
                 style = InfoStyle,
@@ -158,72 +152,48 @@ private fun Hud(game: GameState) {
                 },
                 style = InfoStyle,
             )
+            BasicText(stringResource(R.string.hud_record, recordText(game.type, game.record)), style = SmallStyle)
         }
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            NewGameButton(onClick = game::newGame)
-            DifficultySelector(game.difficulty, onSelect = game::changeDifficulty)
+            GameButton(stringResource(R.string.exit), onClick = onExit)
+            GameButton(stringResource(R.string.restart), onClick = game::restart)
         }
     }
 }
 
 @Composable
-private fun NewGameButton(onClick: () -> Unit) {
-    val shape = RoundedCornerShape(12.dp)
-    Box(
-        Modifier
-            .clip(shape)
-            .background(Color(0x33FFFFFF))
-            .border(1.dp, Color(0x80FFFFFF), shape)
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        BasicText(stringResource(R.string.new_game), style = ButtonStyle)
-    }
-}
-
-/** Prepínač náročnosti; zmena začne novú hru. */
-@Composable
-private fun DifficultySelector(selected: Difficulty, onSelect: (Difficulty) -> Unit) {
-    val shape = RoundedCornerShape(10.dp)
-    Row(
-        Modifier
-            .clip(shape)
-            .border(1.dp, Color(0x80FFFFFF), shape),
-    ) {
-        for (difficulty in Difficulty.entries) {
-            val isSelected = difficulty == selected
-            Box(
-                Modifier
-                    .background(if (isSelected) SelectedChip else Color.Transparent)
-                    .selectable(selected = isSelected, role = Role.RadioButton) { onSelect(difficulty) }
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-            ) {
-                BasicText(
-                    stringResource(difficulty.labelRes),
-                    style = if (isSelected) ChipSelectedStyle else ChipStyle,
-                )
+private fun RoundSummary(game: GameState, modifier: Modifier) {
+    OverlayPanel(modifier) {
+        val text = when (val rules = game.rules) {
+            is TrainingRules -> pluralStringResource(R.plurals.round_summary, rules.turnPoints, game.round, rules.turnPoints)
+            is X01Rules -> if (rules.busted) {
+                stringResource(R.string.summary_bust, rules.remaining)
+            } else {
+                stringResource(R.string.summary_x01, game.round, rules.turnPoints, rules.remaining)
             }
+            is RoundaboutRules -> pluralStringResource(R.plurals.summary_hits, rules.turnPoints, game.round, rules.turnPoints)
         }
+        BasicText(text, style = OverlayStyle)
+        if (game.isNewRecord) BasicText(stringResource(R.string.new_record), style = RecordStyle)
     }
 }
 
-private val Difficulty.labelRes: Int
-    get() = when (this) {
-        Difficulty.EASY -> R.string.difficulty_easy
-        Difficulty.MEDIUM -> R.string.difficulty_medium
-        Difficulty.HARD -> R.string.difficulty_hard
-    }
-
 @Composable
-private fun RoundSummary(round: Int, points: Int, modifier: Modifier = Modifier) {
-    BasicText(
-        pluralStringResource(R.plurals.round_summary, points, round, points),
-        style = SummaryStyle,
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xCC0E1116))
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-    )
+private fun GameOver(game: GameState, onExit: () -> Unit, modifier: Modifier) {
+    OverlayPanel(modifier) {
+        BasicText(stringResource(R.string.game_over), style = OverlayStyle)
+        BasicText(pluralStringResource(R.plurals.game_over_darts, game.totalDarts, game.totalDarts), style = OverlayStyle)
+        if (game.isNewRecord) {
+            BasicText(stringResource(R.string.new_record), style = RecordStyle)
+        } else {
+            BasicText(stringResource(R.string.hud_record, recordText(game.type, game.record)), style = InfoStyle)
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            GameButton(stringResource(R.string.play_again), onClick = game::restart)
+            GameButton(stringResource(R.string.menu), onClick = onExit)
+        }
+    }
 }
 
 private const val MAX_FRAME_SECONDS = 0.05f

@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -23,6 +24,9 @@ import sk.sipky.darts.game.BoardGeometry
 import sk.sipky.darts.game.GameConfig
 import sk.sipky.darts.game.GameState
 import sk.sipky.darts.game.Phase
+import sk.sipky.darts.game.RoundaboutRules
+import sk.sipky.darts.game.RoundaboutTarget
+import sk.sipky.darts.game.TargetKind
 import kotlin.math.atan2
 import kotlin.math.ceil
 import kotlin.math.cos
@@ -57,6 +61,11 @@ class SceneRenderer {
     private var crosshairLine = Stroke(2f)
     private var crosshairOutline = Stroke(5f)
     private var boardBitmap: ImageBitmap? = null
+
+    // Zvýraznenie cieľa (mm), prepočíta sa len pri zmene cieľa
+    private var highlightTarget: RoundaboutTarget? = null
+    private var highlightPath = Path()
+    private val highlightStroke = Stroke(1.6f)
 
     // --- Terč (v mm) ---
     private val wedges: List<Pair<Path, Color>> = buildList {
@@ -255,6 +264,7 @@ class SceneRenderer {
         game.timeSeconds
         val bitmap = boardBitmap ?: return@with
         drawImage(bitmap, Offset(boardCx - bitmap.width / 2f, boardCy - bitmap.height / 2f))
+        drawTargetHighlight(game)
 
         for (dart in game.stuckDarts) {
             drawDart(boardX(dart.xMm), boardY(dart.yMm), 180f + dart.tiltDeg, stuckScale)
@@ -275,7 +285,24 @@ class SceneRenderer {
                 val easeOut = 1f - (1f - p) * (1f - p)
                 drawHand(game, drop = (1f - easeOut) * handDropPx, withDart = true)
             }
-            Phase.ROUND_SUMMARY -> drawHand(game, drop = handDropPx, withDart = false)
+            Phase.ROUND_SUMMARY, Phase.GAME_OVER -> drawHand(game, drop = handDropPx, withDart = false)
+        }
+    }
+
+    /** Zvýrazní aktuálny cieľ v hre Okolo terča (jemne pulzuje). */
+    private fun DrawScope.drawTargetHighlight(game: GameState) {
+        val target = (game.rules as? RoundaboutRules)?.currentTarget ?: return
+        if (target != highlightTarget) {
+            highlightTarget = target
+            highlightPath = targetPath(target)
+        }
+        val pulse = 0.5f + 0.5f * sin(game.timeSeconds * 5.0).toFloat()
+        withTransform({
+            translate(boardCx, boardCy)
+            scale(pxPerMm, pxPerMm, Offset.Zero)
+        }) {
+            drawPath(highlightPath, HIGHLIGHT, alpha = 0.25f + 0.25f * pulse)
+            drawPath(highlightPath, HIGHLIGHT, style = highlightStroke)
         }
     }
 
@@ -452,6 +479,7 @@ class SceneRenderer {
         val SLEEVE = Color(0xFF26406B)
         val SLEEVE_OUTLINE = Color(0xFF1B2D4D)
 
+        val HIGHLIGHT = Color(0xFFFFD166)
         val CROSSHAIR = Color.White
         val CROSSHAIR_OUTLINE = Color(0xE6000000)
 
@@ -471,6 +499,34 @@ class SceneRenderer {
                 arcTo(Rect(Offset.Zero, outer), start, sweep, true)
                 arcTo(Rect(Offset.Zero, inner), start + sweep, -sweep, false)
                 close()
+            }
+        }
+
+        /** Plocha terča, ktorá sa počíta ako zásah cieľa (mm). */
+        fun targetPath(target: RoundaboutTarget): Path {
+            val single = listOf(
+                BoardGeometry.OUTER_BULL_RADIUS to BoardGeometry.TRIPLE_INNER_RADIUS,
+                BoardGeometry.TRIPLE_OUTER_RADIUS to BoardGeometry.DOUBLE_INNER_RADIUS,
+            )
+            val double = BoardGeometry.DOUBLE_INNER_RADIUS to BoardGeometry.DOUBLE_OUTER_RADIUS
+            val triple = BoardGeometry.TRIPLE_INNER_RADIUS to BoardGeometry.TRIPLE_OUTER_RADIUS
+            val rings = when (target.kind) {
+                TargetKind.ANY -> listOf(BoardGeometry.OUTER_BULL_RADIUS to BoardGeometry.DOUBLE_OUTER_RADIUS)
+                TargetKind.SINGLE -> single
+                TargetKind.DOUBLE_OR_TRIPLE -> listOf(triple, double)
+                TargetKind.DOUBLE -> listOf(double)
+                TargetKind.TRIPLE -> listOf(triple)
+                TargetKind.ANY_BULL -> return Path().apply { addOval(Rect(Offset.Zero, BoardGeometry.OUTER_BULL_RADIUS)) }
+                TargetKind.BULL -> return Path().apply { addOval(Rect(Offset.Zero, BoardGeometry.BULL_RADIUS)) }
+                TargetKind.OUTER_BULL -> return Path().apply {
+                    fillType = PathFillType.EvenOdd
+                    addOval(Rect(Offset.Zero, BoardGeometry.OUTER_BULL_RADIUS))
+                    addOval(Rect(Offset.Zero, BoardGeometry.BULL_RADIUS))
+                }
+            }
+            val index = BoardGeometry.SECTORS.indexOf(target.number)
+            return Path().apply {
+                for ((inner, outer) in rings) addPath(wedge(inner, outer, index))
             }
         }
 

@@ -17,8 +17,11 @@ enum class Phase {
     /** Ruka s novou šípkou sa vracia do východiskovej polohy. */
     RETURNING,
 
-    /** Po tretej šípke sa zobrazuje súhrn kola. */
+    /** Po tretej šípke (alebo prestrelení) sa zobrazuje súhrn kola. */
     ROUND_SUMMARY,
+
+    /** Hra je dohraná, čaká sa na „Hrať znova" alebo návrat do menu. */
+    GAME_OVER,
 }
 
 /** Šípka zapichnutá v terči. [tiltDeg] je náhodný náklon pri kreslení. */
@@ -30,26 +33,35 @@ class StuckDart(val xMm: Float, val yMm: Float, val tiltDeg: Float, val result: 
  * Hodnoty, ktoré zobrazuje HUD, sú Compose snapshot stav, aby sa HUD prekreslil len pri zmene.
  * [timeSeconds] sa mení každý snímok a jeho čítaním sa prekresľuje scéna.
  */
-class GameState(seed: Long) {
+class GameState(
+    seed: Long,
+    val type: GameType = GameType.Training,
+    val difficulty: Difficulty = GameConfig.defaultDifficulty,
+    private val records: RecordBook = RecordBook(InMemoryRecordStore()),
+) {
     private val random = Random(seed xor 0x5DEECE66DL)
-    val sway = Sway(seed)
+    val sway = Sway(seed).apply { setLevel(difficulty.sway) }
 
-    var difficulty by mutableStateOf(GameConfig.defaultDifficulty)
+    var rules: GameRules by mutableStateOf(type.createRules().apply { startTurn() })
         private set
 
-    init {
-        sway.setLevel(difficulty.sway)
-    }
+    /** Doterajší rekord pre tento druh hry a náročnosť. */
+    var record by mutableStateOf(records.best(type, difficulty))
+        private set
+
+    /** Posledné kolo alebo dohraná hra priniesli nový rekord. */
+    var isNewRecord by mutableStateOf(false)
+        private set
 
     var timeSeconds by mutableDoubleStateOf(0.0)
         private set
     var phase by mutableStateOf(Phase.READY)
         private set
-    var score by mutableIntStateOf(0)
-        private set
     var round by mutableIntStateOf(1)
         private set
-    var roundPoints by mutableIntStateOf(0)
+
+    /** Všetky hodené šípky v tejto hre. */
+    var totalDarts by mutableIntStateOf(0)
         private set
 
     /** Počet šípok, ktoré v tomto kole už dopadli. */
@@ -122,9 +134,11 @@ class GameState(seed: Long) {
                 darts.clear()
                 round += 1
                 dartsLanded = 0
-                roundPoints = 0
+                isNewRecord = false
+                rules.startTurn()
                 startReturn()
             }
+            Phase.GAME_OVER -> Unit
         }
         return false
     }
@@ -161,21 +175,16 @@ class GameState(seed: Long) {
         enter(Phase.FLIGHT)
     }
 
-    /** Zmení náročnosť a začne novú hru, aby sa skóre z rôznych úrovní nemiešalo. */
-    fun changeDifficulty(newDifficulty: Difficulty) {
-        if (newDifficulty == difficulty) return
-        difficulty = newDifficulty
-        sway.setLevel(newDifficulty.sway)
-        newGame()
-    }
-
-    fun newGame() {
+    /** Začne tú istú hru odznova. */
+    fun restart() {
+        rules = type.createRules().apply { startTurn() }
         darts.clear()
-        score = 0
         round = 1
-        roundPoints = 0
+        totalDarts = 0
         dartsLanded = 0
         lastResult = null
+        isNewRecord = false
+        record = records.best(type, difficulty)
         aiming = false
         dragXMm = 0f
         dragYMm = 0f
@@ -186,12 +195,28 @@ class GameState(seed: Long) {
     private fun land() {
         val result = flightResult ?: return
         darts += StuckDart(targetXMm, targetYMm, flightTiltDeg, result)
-        score += result.points
-        roundPoints += result.points
         lastResult = result
         dartsLanded += 1
+        totalDarts += 1
         flightResult = null
-        if (dartsLanded >= GameConfig.dartsPerRound) enter(Phase.ROUND_SUMMARY) else startReturn()
+        when (rules.onDart(result)) {
+            DartOutcome.FINISHED -> {
+                submitRecord(totalDarts)
+                enter(Phase.GAME_OVER)
+            }
+            DartOutcome.BUST -> endTurn()
+            DartOutcome.CONTINUE -> if (dartsLanded >= GameConfig.dartsPerRound) endTurn() else startReturn()
+        }
+    }
+
+    private fun endTurn() {
+        rules.turnRecordValue?.let { submitRecord(it) }
+        enter(Phase.ROUND_SUMMARY)
+    }
+
+    private fun submitRecord(value: Int) {
+        isNewRecord = records.submit(type, difficulty, value)
+        record = records.best(type, difficulty)
     }
 
     private fun startReturn() {
