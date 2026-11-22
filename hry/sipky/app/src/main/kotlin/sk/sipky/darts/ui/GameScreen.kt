@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -41,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import sk.sipky.darts.R
+import sk.sipky.darts.game.Difficulty
 import sk.sipky.darts.game.GameConfig
 import sk.sipky.darts.game.GameState
 import sk.sipky.darts.game.Phase
@@ -51,7 +54,10 @@ private val TextShadow = Shadow(Color.Black, Offset(0f, 2f), 6f)
 private val ScoreStyle = TextStyle(color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold, shadow = TextShadow)
 private val InfoStyle = TextStyle(color = Color(0xFFE6E9EF), fontSize = 17.sp, fontWeight = FontWeight.Medium, shadow = TextShadow)
 private val ButtonStyle = TextStyle(color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-private val SummaryStyle = TextStyle(color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+private val ChipStyle = TextStyle(color = Color(0xFFCDD3DC), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+private val ChipSelectedStyle = TextStyle(color = Color(0xFF12151B), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+private val SelectedChip = Color(0xFFF2F2F2)
+private val SummaryStyle =TextStyle(color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
 
 @Composable
 fun GameScreen(game: GameState) {
@@ -153,7 +159,10 @@ private fun Hud(game: GameState) {
                 style = InfoStyle,
             )
         }
-        NewGameButton(onClick = game::newGame)
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            NewGameButton(onClick = game::newGame)
+            DifficultySelector(game.difficulty, onSelect = game::changeDifficulty)
+        }
     }
 }
 
@@ -171,6 +180,39 @@ private fun NewGameButton(onClick: () -> Unit) {
         BasicText(stringResource(R.string.new_game), style = ButtonStyle)
     }
 }
+
+/** Prepínač náročnosti; zmena začne novú hru. */
+@Composable
+private fun DifficultySelector(selected: Difficulty, onSelect: (Difficulty) -> Unit) {
+    val shape = RoundedCornerShape(10.dp)
+    Row(
+        Modifier
+            .clip(shape)
+            .border(1.dp, Color(0x80FFFFFF), shape),
+    ) {
+        for (difficulty in Difficulty.entries) {
+            val isSelected = difficulty == selected
+            Box(
+                Modifier
+                    .background(if (isSelected) SelectedChip else Color.Transparent)
+                    .selectable(selected = isSelected, role = Role.RadioButton) { onSelect(difficulty) }
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+            ) {
+                BasicText(
+                    stringResource(difficulty.labelRes),
+                    style = if (isSelected) ChipSelectedStyle else ChipStyle,
+                )
+            }
+        }
+    }
+}
+
+private val Difficulty.labelRes: Int
+    get() = when (this) {
+        Difficulty.EASY -> R.string.difficulty_easy
+        Difficulty.MEDIUM -> R.string.difficulty_medium
+        Difficulty.HARD -> R.string.difficulty_hard
+    }
 
 @Composable
 private fun RoundSummary(round: Int, points: Int, modifier: Modifier = Modifier) {

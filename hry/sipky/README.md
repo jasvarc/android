@@ -7,6 +7,7 @@ Natívna Android hra (Kotlin + Jetpack Compose). Hádžeš šípky na terč s re
 - Ťahaj prstom kdekoľvek pod HUD – zameriavač sa posúva **relatívne** (prst nemusí byť na terči).
 - Zameriavač sa sám trasie (ruka). Šípka dopadne presne tam, kde je zameriavač v okamihu zdvihnutia prsta.
 - Kolo = 3 šípky, skóre sa sčítava. „Nová hra" vynuluje skóre aj kolá.
+- Náročnosť Ľahká / Stredná / Ťažká sa prepína v HUD; zmena začne novú hru.
 
 ## Build
 
@@ -38,7 +39,8 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Ladenie obtiažnosti (`GameConfig`)
 
-- `swayAmplitudeMm` (35) – sila trasenia, hlavný parameter obtiažnosti
+- `swayEasy` / `swayMedium` / `swayHard` – amplitúda (mm) a násobok frekvencií trasenia pre úrovne Ľahká (3 mm, 0.35×), Stredná (18 mm, 0.6×), Ťažká (35 mm, 1×)
+- `defaultDifficulty` – úroveň pri spustení (Stredná)
 - `swayFreqX` / `swayFreqY` / `swayWeights` – charakter trasenia
 - `dragSensitivity` (1.0) – px terča na 1 px prsta
 - `maxDragOffsetMm` (300) – maximálny posun zameriavača

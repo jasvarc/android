@@ -11,7 +11,7 @@ import kotlin.random.Random
  */
 class Sway(
     seed: Long,
-    private val amplitudeMm: Float = GameConfig.swayAmplitudeMm,
+    private var amplitudeMm: Float = GameConfig.swayAmplitudeMm,
     private val freqX: FloatArray = GameConfig.swayFreqX,
     private val freqY: FloatArray = GameConfig.swayFreqY,
     weights: FloatArray = GameConfig.swayWeights,
@@ -20,12 +20,19 @@ class Sway(
     private val phases = DoubleArray(4)
     private val w0: Double
     private val w1: Double
+    private var freqScale = 1.0
 
     init {
         val sum = (weights[0] + weights[1]).toDouble()
         w0 = weights[0] / sum
         w1 = weights[1] / sum
         newDart()
+    }
+
+    /** Zmení silu trasenia (napr. pri zmene náročnosti). */
+    fun setLevel(level: SwayLevel) {
+        amplitudeMm = level.amplitudeMm
+        freqScale = level.freqScale.toDouble()
     }
 
     fun newDart() {
@@ -37,7 +44,8 @@ class Sway(
     fun y(timeSeconds: Double): Float = component(timeSeconds, freqY, phases[2], phases[3])
 
     private fun component(t: Double, freq: FloatArray, p0: Double, p1: Double): Float {
-        val v = w0 * sin(2 * PI * freq[0] * t + p0) + w1 * sin(2 * PI * freq[1] * t + p1)
+        val w = 2 * PI * freqScale * t
+        val v = w0 * sin(w * freq[0] + p0) + w1 * sin(w * freq[1] + p1)
         return (amplitudeMm * v).toFloat()
     }
 }

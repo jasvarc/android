@@ -9,8 +9,20 @@ object GameConfig {
 
     // --- Trasenie ruky ---
 
-    /** Maximálna výchylka trasenia na každej osi (mm). Väčšia hodnota = ťažšia hra. */
+    /** Maximálna výchylka trasenia na každej osi (mm) pri najťažšej úrovni. */
     val swayAmplitudeMm = 35f
+
+    /** Trasenie pre úroveň Ľahká: takmer pokojná ruka. */
+    val swayEasy = SwayLevel(amplitudeMm = 3f, freqScale = 0.35f)
+
+    /** Trasenie pre úroveň Stredná: menšie a pomalšie. */
+    val swayMedium = SwayLevel(amplitudeMm = 18f, freqScale = 0.6f)
+
+    /** Trasenie pre úroveň Ťažká. */
+    val swayHard = SwayLevel(amplitudeMm = swayAmplitudeMm, freqScale = 1f)
+
+    /** Úroveň pri spustení hry. */
+    val defaultDifficulty = Difficulty.MEDIUM
 
     /** Frekvencie dvoch sínusoviek pre os x (Hz). Navzájom nesúmerné, aby sa pohyb neopakoval. */
     val swayFreqX = floatArrayOf(0.8f, 1.9f)

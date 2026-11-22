@@ -34,6 +34,13 @@ class GameState(seed: Long) {
     private val random = Random(seed xor 0x5DEECE66DL)
     val sway = Sway(seed)
 
+    var difficulty by mutableStateOf(GameConfig.defaultDifficulty)
+        private set
+
+    init {
+        sway.setLevel(difficulty.sway)
+    }
+
     var timeSeconds by mutableDoubleStateOf(0.0)
         private set
     var phase by mutableStateOf(Phase.READY)
@@ -152,6 +159,14 @@ class GameState(seed: Long) {
         dragXMm = 0f
         dragYMm = 0f
         enter(Phase.FLIGHT)
+    }
+
+    /** Zmení náročnosť a začne novú hru, aby sa skóre z rôznych úrovní nemiešalo. */
+    fun changeDifficulty(newDifficulty: Difficulty) {
+        if (newDifficulty == difficulty) return
+        difficulty = newDifficulty
+        sway.setLevel(newDifficulty.sway)
+        newGame()
     }
 
     fun newGame() {

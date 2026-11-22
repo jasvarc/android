@@ -58,6 +58,22 @@ class GameStateTest {
     }
 
     @Test
+    fun changingDifficultyStartsNewGame() {
+        val game = GameState(seed = 4)
+        assertEquals(GameConfig.defaultDifficulty, game.difficulty)
+        game.throwDart()
+        game.changeDifficulty(Difficulty.EASY)
+        assertEquals(Difficulty.EASY, game.difficulty)
+        assertEquals(0, game.score)
+        assertEquals(0, game.stuckDarts.size)
+        // Na ľahkej úrovni sa zameriavač takmer nehýbe
+        repeat(300) {
+            game.update(0.016f)
+            assertTrue(kotlin.math.abs(game.aimXMm) <= Difficulty.EASY.sway.amplitudeMm + 1e-3f)
+        }
+    }
+
+    @Test
     fun roundOfThreeDartsThenNextRound() {
         val game = GameState(seed = 1)
         repeat(3) { game.throwDart() }

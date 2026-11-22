@@ -6,6 +6,9 @@
     <string name="hud_last_throw">%1$s · %2$d b.</string>
     <string name="hud_hint">Ťahaj prstom, pusti = hod</string>
     <string name="new_game">Nová hra</string>
+    <string name="difficulty_easy">Ľahká</string>
+    <string name="difficulty_medium">Stredná</string>
+    <string name="difficulty_hard">Ťažká</string>
     <plurals name="round_summary">
         <item quantity="one">Kolo %1$d: %2$d bod</item>
         <item quantity="few">Kolo %1$d: %2$d body</item>

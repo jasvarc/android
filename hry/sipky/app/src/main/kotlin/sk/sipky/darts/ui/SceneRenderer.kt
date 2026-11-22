@@ -6,6 +6,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -133,30 +134,91 @@ class SceneRenderer {
     private val gripStroke = Stroke(1.3f)
     private val spineStroke = Stroke(1.6f)
 
-    // --- Ruka v rovnakých lokálnych súradniciach ako šípka v nej ---
+    // --- Pravá ruka zozadu v rovnakých lokálnych súradniciach ako šípka v nej ---
+    // Šípka je držaná ako ceruzka: palec zľava, ukazovák a prostredník zhora sprava,
+    // prstenník a malíček voľne skrčené pod dlaňou.
     private val forearm = Path().apply {
-        moveTo(4f, 80f)
-        lineTo(52f, 66f)
-        lineTo(124f, 340f)
-        lineTo(28f, 352f)
+        moveTo(20f, 112f)
+        cubicTo(34f, 104f, 54f, 102f, 66f, 108f)
+        cubicTo(84f, 180f, 104f, 270f, 124f, 400f)
+        lineTo(38f, 410f)
+        cubicTo(34f, 300f, 26f, 200f, 20f, 112f)
         close()
     }
     private val sleeve = Path().apply {
-        moveTo(12f, 196f)
-        lineTo(86f, 180f)
-        lineTo(136f, 360f)
-        lineTo(22f, 372f)
+        moveTo(26f, 236f)
+        cubicTo(48f, 224f, 78f, 220f, 98f, 226f)
+        lineTo(132f, 420f)
+        lineTo(36f, 425f)
         close()
     }
-    private val palm = Path().apply { addOval(Rect(-12f, 38f, 56f, 112f)) }
-    private val thumb = capsule(-20f, 86f, -6f, 46f, 8.5f)
-    private val fingers = listOf(
-        capsule(36f, 88f, 8f, 86f, 7f),
-        capsule(40f, 72f, 4f, 68f, 8f),
-        capsule(40f, 56f, 0f, 50f, 8.5f),
-        capsule(34f, 40f, -2f, 34f, 8f),
+    private val sleeveCuff = Path().apply {
+        moveTo(27f, 246f)
+        cubicTo(49f, 234f, 79f, 230f, 100f, 236f)
+    }
+    private val backOfHand = Path().apply {
+        moveTo(6f, 50f)
+        cubicTo(18f, 38f, 50f, 38f, 64f, 54f)
+        cubicTo(74f, 70f, 72f, 100f, 64f, 120f)
+        cubicTo(50f, 126f, 34f, 128f, 20f, 122f)
+        cubicTo(8f, 104f, 1f, 76f, 6f, 50f)
+        close()
+    }
+
+    /** Šľachy a hánky na chrbte ruky (jemné čiary). */
+    private val handDetails = Path().apply {
+        moveTo(14f, 58f)
+        quadraticTo(16f, 52f, 22f, 50f)
+        moveTo(29f, 54f)
+        quadraticTo(32f, 48f, 38f, 48f)
+        moveTo(43f, 57f)
+        quadraticTo(46f, 52f, 51f, 53f)
+        moveTo(20f, 70f)
+        quadraticTo(24f, 92f, 30f, 112f)
+        moveTo(36f, 70f)
+        quadraticTo(40f, 92f, 44f, 114f)
+    }
+
+    /** Prsty pod dlaňou (kreslia sa pred chrbtom ruky). */
+    private val tuckedFingers = listOf(
+        taperedCapsule(56f, 60f, 7f, 56f, 50f, 6.5f),
+        taperedCapsule(56f, 50f, 6.5f, 48f, 62f, 5.5f),
+        taperedCapsule(44f, 54f, 8f, 42f, 40f, 7.5f),
+        taperedCapsule(42f, 40f, 7.5f, 32f, 50f, 6.5f),
     )
-    private val skinStroke = Stroke(2.2f)
+    private val thumb = listOf(
+        taperedCapsule(16f, 104f, 12f, 0f, 74f, 9.5f),
+        taperedCapsule(0f, 74f, 9.5f, -6f, 50f, 7.5f),
+    )
+
+    /** Prostredník a ukazovák cez šípku; posledný článok sa kreslí ako posledný. */
+    private val frontFingers = listOf(
+        taperedCapsule(30f, 50f, 8.5f, 22f, 32f, 7.8f),
+        taperedCapsule(22f, 32f, 7.8f, 8f, 37f, 6.8f),
+        taperedCapsule(15f, 52f, 8.8f, 10f, 34f, 8f),
+        taperedCapsule(10f, 34f, 8f, 2f, 24f, 6.8f),
+    )
+    private val nails = Path().apply {
+        addOval(Rect(-10f, 45f, -3f, 52f))
+        addOval(Rect(-1.5f, 20f, 5f, 26f))
+    }
+    private val skinBrush = Brush.linearGradient(
+        listOf(SKIN_LIGHT, SKIN, SKIN_SHADE),
+        start = Offset(-10f, 20f),
+        end = Offset(80f, 140f),
+    )
+    private val forearmBrush = Brush.horizontalGradient(
+        listOf(SKIN, SKIN_SHADE),
+        startX = 20f,
+        endX = 110f,
+    )
+    private val sleeveBrush = Brush.horizontalGradient(
+        listOf(SLEEVE_LIGHT, SLEEVE),
+        startX = 30f,
+        endX = 130f,
+    )
+    private val skinStroke = Stroke(1.5f)
+    private val detailStroke = Stroke(1.2f)
 
     /** Prepočíta rozloženie scény; pri nezmenenej veľkosti nerobí nič. */
     fun updateLayout(size: Size, density: Density) {
@@ -174,8 +236,8 @@ class SceneRenderer {
         val boardBottom = boardCy + boardRadiusPx
         val handArea = height - boardBottom
         handRestX = width * 0.5f
-        handRestY = boardBottom + handArea * 0.22f
-        handScale = min(handArea * 0.62f / DART_LENGTH, width * 0.004f)
+        handRestY = boardBottom + handArea * 0.12f
+        handScale = min(handArea * 0.7f / DART_LENGTH, width * 0.0045f)
         stuckScale = STUCK_DART_LENGTH_MM * pxPerMm / DART_LENGTH
         handDropPx = handArea
         arcHeightPx = height * GameConfig.arcHeightFraction
@@ -269,19 +331,27 @@ class SceneRenderer {
             rotate(rotation, Offset.Zero)
             scale(handScale, handScale, Offset.Zero)
         }) {
-            drawPath(forearm, SKIN_SHADE)
+            drawPath(forearm, forearmBrush)
             drawPath(forearm, SKIN_OUTLINE, style = skinStroke)
-            drawPath(sleeve, SLEEVE)
+            drawPath(sleeve, sleeveBrush)
+            drawPath(sleeveCuff, SLEEVE_OUTLINE, style = skinStroke)
             drawPath(sleeve, SLEEVE_OUTLINE, style = skinStroke)
-            drawPath(palm, SKIN)
-            drawPath(palm, SKIN_OUTLINE, style = skinStroke)
+            drawSkin(tuckedFingers)
+            drawPath(backOfHand, skinBrush)
+            drawPath(backOfHand, SKIN_OUTLINE, style = skinStroke)
+            drawPath(handDetails, SKIN_CREASE, style = detailStroke)
             if (withDart) drawDartLocal()
-            drawPath(thumb, SKIN)
-            drawPath(thumb, SKIN_OUTLINE, style = skinStroke)
-            for (finger in fingers) {
-                drawPath(finger, SKIN)
-                drawPath(finger, SKIN_OUTLINE, style = skinStroke)
-            }
+            drawSkin(thumb)
+            drawSkin(frontFingers)
+            drawPath(nails, NAIL)
+            drawPath(nails, SKIN_CREASE, style = detailStroke)
+        }
+    }
+
+    private fun DrawScope.drawSkin(parts: List<Path>) {
+        for (part in parts) {
+            drawPath(part, skinBrush)
+            drawPath(part, SKIN_OUTLINE, style = skinStroke)
         }
     }
 
@@ -372,10 +442,14 @@ class SceneRenderer {
         val GRIP = Color(0xFF6E737C)
         val NEEDLE = Color(0xFFDADDE2)
 
-        val SKIN = Color(0xFFE9B38C)
-        val SKIN_SHADE = Color(0xFFD59A73)
-        val SKIN_OUTLINE = Color(0xFF8E5A3C)
-        val SLEEVE = Color(0xFF2E4A7A)
+        val SKIN_LIGHT = Color(0xFFF6CFAF)
+        val SKIN = Color(0xFFE8B48F)
+        val SKIN_SHADE = Color(0xFFC98E6A)
+        val SKIN_OUTLINE = Color(0xB3824F35)
+        val SKIN_CREASE = Color(0x669C6142)
+        val NAIL = Color(0xFFF7DCCB)
+        val SLEEVE_LIGHT = Color(0xFF3D5F95)
+        val SLEEVE = Color(0xFF26406B)
         val SLEEVE_OUTLINE = Color(0xFF1B2D4D)
 
         val CROSSHAIR = Color.White
@@ -400,8 +474,8 @@ class SceneRenderer {
             }
         }
 
-        /** Kapsula (prst) z bodu a do bodu b s polomerom r. */
-        fun capsule(ax: Float, ay: Float, bx: Float, by: Float, r: Float): Path {
+        /** Zužujúca sa kapsula (článok prsta) z bodu a s polomerom ra do bodu b s polomerom rb. */
+        fun taperedCapsule(ax: Float, ay: Float, ra: Float, bx: Float, by: Float, rb: Float): Path {
             val len = hypot(bx - ax, by - ay)
             val dx = (bx - ax) / len
             val dy = (by - ay) / len
@@ -409,11 +483,11 @@ class SceneRenderer {
             val ny = dx
             val theta = Math.toDegrees(atan2(dy, dx).toDouble()).toFloat()
             return Path().apply {
-                moveTo(ax + nx * r, ay + ny * r)
-                lineTo(bx + nx * r, by + ny * r)
-                arcTo(Rect(Offset(bx, by), r), theta + 90f, -180f, false)
-                lineTo(ax - nx * r, ay - ny * r)
-                arcTo(Rect(Offset(ax, ay), r), theta - 90f, -180f, false)
+                moveTo(ax + nx * ra, ay + ny * ra)
+                lineTo(bx + nx * rb, by + ny * rb)
+                arcTo(Rect(Offset(bx, by), rb), theta + 90f, -180f, false)
+                lineTo(ax - nx * ra, ay - ny * ra)
+                arcTo(Rect(Offset(ax, ay), ra), theta - 90f, -180f, false)
                 close()
             }
         }
